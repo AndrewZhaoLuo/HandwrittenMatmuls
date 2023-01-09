@@ -117,6 +117,10 @@ experiment_result_t measure_peak_flops_avx2(int iterations) {
   fill_zero(B, vec_width);
 
   clock_t start, end;
+
+  // warmup
+  peak_flops<registers, vec_width, outputs>(A, B, iterations);
+
   start = clock();
   peak_flops<registers, vec_width, outputs>(A, B, iterations);
   end = clock();
@@ -140,6 +144,11 @@ experiment_result_t measure_condition(int M, int K, int repeats,
   float *A = (float *)aligned_alloc(16 * sizeof(float), M * K * sizeof(float));
   float *B = (float *)aligned_alloc(16 * sizeof(float), K * sizeof(float));
   float *C = (float *)aligned_alloc(16 * sizeof(float), M * sizeof(float));
+
+  // warmup
+  for (int i = 0; i < repeats; i++) {
+    function(A, B, C, M, K);
+  }
 
   start = clock();
   for (int i = 0; i < repeats; i++) {
