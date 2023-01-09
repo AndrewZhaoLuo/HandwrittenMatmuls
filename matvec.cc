@@ -55,19 +55,15 @@ bool is_same(float *arr1, float *arr2, int n) {
 // B, matrix of shape 768, 3072
 // C, matrix of shape 512, 768
 
-template <int registers, int vec_width, int outputs>
-void peak_flops(float *A, float *B, int iterations) {
-  // A is linearized [registers][vec_width], B is linearized
-  // [outputs][vec_width]
-  for (int i = 0; i < iterations; i++) {
-    for (int r = 0; r < registers; r++) {
-      for (int o = 0; o < outputs; o++) {
-        for (int v = 0; v < vec_width; v++) {
-          B[o * vec_width + v] += A[r * vec_width + v] * B[o * vec_width + v];
-        }
-      }
-    }
+// peak flops for something with O(MK) flop
+void peak_flops(float *A, float *B, float *C, int M, int K) {
+  __m256 a_reg = _mm256_set_ps(A[7], A[6], A[5], A[4], A[3], A[2], A[1], A[0]);
+  __m256 b_reg = _mm256_set_ps(B[7], B[6], B[5], B[4], B[3], B[2], B[1], B[0]);
+
+  for (int i = 0; i < M * K / 8; i++) {
+    a_reg = _mm256_fmadd_ps(a_reg, b_reg, a_reg);
   }
+  _mm256_storeu_ps(C, a_reg);
 }
 
 // baseline matvec multiplication
@@ -102,38 +98,6 @@ template <int k> void matvec_2(float *A, float *B, float *C, int M, int K) {
       C[m] += A[m * K + k_total] * B[k_total];
     }
   }
-}
-
-template <long long vec_width = 8, long long registers = 1024,
-          long long outputs = 32>
-experiment_result_t measure_peak_flops_avx2(int iterations) {
-
-  float *A = (float *)aligned_alloc(16 * sizeof(float),
-                                    vec_width * registers * sizeof(float));
-  float *B =
-      (float *)aligned_alloc(16 * sizeof(float), vec_width * sizeof(float));
-
-  fill_zero(A, vec_width * registers);
-  fill_zero(B, vec_width);
-
-  clock_t start, end;
-
-  // warmup
-  peak_flops<registers, vec_width, outputs>(A, B, iterations);
-
-  start = clock();
-  peak_flops<registers, vec_width, outputs>(A, B, iterations);
-  end = clock();
-
-  free(A);
-  free(B);
-
-  double cpu_time_ms = (double)(end - start) / CLOCKS_PER_SEC / 10 * 1e3;
-  long long flop = 2 * vec_width * registers * iterations * outputs;
-  double flops = (double)flop / (cpu_time_ms / 1e3);
-  experiment_result_t results;
-  results = (experiment_result_t){end - start, cpu_time_ms, flop, flops};
-  return results;
 }
 
 experiment_result_t measure_condition(int M, int K, int repeats,
@@ -177,25 +141,24 @@ int main(int argc, char **argv) {
 
   int function_num = atoi(argv[1]);
 
-  experiment_result_t result;
+  void (*function)(float *, float *, float *, int, int);
   switch (function_num) {
   case 0:
     // get peak flops
-    result = measure_peak_flops_avx2(1024);
+    function = &peak_flops;
     break;
   case 1:
-    result = measure_condition(10000, 1000, 100, matvec_1);
-    ;
+    function = &matvec_1;
     break;
   case 2:
-    result = measure_condition(10000, 1000, 100, matvec_2<21>);
-    ;
+    function = &matvec_2<21>;
     break;
   default:
     printf("Unrecognized function number %d", function_num);
     return 0;
   }
 
+  experiment_result_t result = measure_condition(10000, 1000, 100, function);
   print_experiment_result(result);
 
   return 1;
