@@ -1,5 +1,5 @@
 benchmark-peak: run run.asm 
-	likwid-perfctr -f -m -g FLOPS_SP -C N:0-1 ./run 0
+	likwid-perfctr -f -m -g FLOPS_SP -C N:0-1 ./run 0 12
 
 run: matvec.cc 
 	clang matvec.cc -O3 -march=znver2 -llikwid -o run 

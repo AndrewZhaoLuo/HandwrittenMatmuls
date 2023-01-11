@@ -12,7 +12,19 @@ a0: naive program and measurement, basic outlines
 #define LIKWID_PERFMON
 #include <likwid.h>
 
-#define REPEATS 1000
+// note ALL_FUNCTIONS4 first func passes in <1> as param instead of <0>
+#define ALL_FUNCTIONS4(FUNC, OFFSET)                                           \
+  &FUNC<1 + OFFSET>, &FUNC<1 + OFFSET>, &FUNC<2 + OFFSET>, &FUNC<3 + OFFSET>
+#define ALL_FUNCTIONS8(FUNC, OFFSET)                                           \
+  ALL_FUNCTIONS4(FUNC, 0 + OFFSET), ALL_FUNCTIONS4(FUNC, 4 + OFFSET)
+#define ALL_FUNCTIONS16(FUNC, OFFSET)                                          \
+  ALL_FUNCTIONS8(FUNC, 0 + OFFSET), ALL_FUNCTIONS8(FUNC, 8 + OFFSET)
+#define ALL_FUNCTIONS31(FUNC)                                                  \
+  ALL_FUNCTIONS16(FUNC, 0), ALL_FUNCTIONS16(FUNC, 16)
+#define FTABLE_0_31(FUNC)                                                      \
+  { ALL_FUNCTIONS31(FUNC) }
+
+#define REPEATS 10
 #define EPS 1e-2
 
 typedef struct experiment_result {
@@ -21,12 +33,6 @@ typedef struct experiment_result {
   long long flop;
   double flops;
 } experiment_result_t;
-
-void print_experiment_result(experiment_result result) {
-  printf("%.4lf (ms)\n", result.ms);
-  printf("%lld flop\n", result.flop);
-  printf("%.4le FLOPS\n", result.flops);
-}
 
 /** DRIVER CODE HERE **/
 void fill_random(float *mat, int n) {
@@ -59,44 +65,32 @@ bool is_same(float *arr1, float *arr2, int n) {
 // C, matrix of shape 512, 768
 
 // peak flops for something with O(MK) flop
+template <int fma_ops_inner_loop>
 void peak_flops(float *A, float *B, float *C, int M, int K) {
   __m256 a1_reg = _mm256_set_ps(A[7], A[6], A[5], A[4], A[3], A[2], A[1], A[0]);
   __m256 b1_reg = _mm256_set_ps(B[7], B[6], B[5], B[4], B[3], B[2], B[1], B[0]);
 
-  __m256 c1_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
-  __m256 c2_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
-  __m256 c3_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
-  __m256 c4_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
-  __m256 c5_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
-  __m256 c6_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
-  __m256 c7_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
-  __m256 c8_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
-
-  // want total flops to be M * K * 2 to match other matvecs
-  // inner loop does 8 * 2 * 8 flop so need to run M * K / (8 * 2) times
-  int iterations = M * K / (8 * 8); 
-  for (int i = 0; i < iterations; i++) {
-    // two fma units per core (CPI = 0.5), seems to saturate at 2 
-    c1_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c1_reg);
-    c2_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c2_reg);
-    c3_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c3_reg);
-    c4_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c4_reg);
-    c5_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c5_reg);
-    c6_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c6_reg);
-    c7_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c7_reg);
-    c8_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c8_reg);
+  __m256 c_regs[fma_ops_inner_loop];
+  for (int r = 0; r < fma_ops_inner_loop; r++) {
+    c_regs[r] = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
   }
 
-  __m256 c_out_reg = _mm256_set_ps(C[0], C[1], C[2], C[3], C[4], C[5], C[6], C[7]);
-  c_out_reg = _mm256_add_ps(c_out_reg, c1_reg);
-  c_out_reg = _mm256_add_ps(c_out_reg, c2_reg);
-  c_out_reg = _mm256_add_ps(c_out_reg, c3_reg);
-  c_out_reg = _mm256_add_ps(c_out_reg, c4_reg);
-  c_out_reg = _mm256_add_ps(c_out_reg, c5_reg);
-  c_out_reg = _mm256_add_ps(c_out_reg, c6_reg);
-  c_out_reg = _mm256_add_ps(c_out_reg, c7_reg);
-  c_out_reg = _mm256_add_ps(c_out_reg, c8_reg);
+  // want total flops to be M * K * 2 to match other matvecs
+  // inner loop does 8 * 2 * fma_ops_inner_loop flop so
+  // need to run M * K / (8 * fma_ops_inner_loop) times
+  int iterations = M * K / (8 * fma_ops_inner_loop);
+  for (int i = 0; i < iterations; i++) {
+    // two fma units per core (CPI = 0.5), seems to saturate at 2
+    for (int r = 0; r < fma_ops_inner_loop; r++) {
+      c_regs[r] = _mm256_fmadd_ps(a1_reg, b1_reg, c_regs[r]);
+    }
+  }
 
+  __m256 c_out_reg =
+      _mm256_set_ps(C[0], C[1], C[2], C[3], C[4], C[5], C[6], C[7]);
+  for (int r = 0; r < fma_ops_inner_loop; r++) {
+    c_out_reg = _mm256_add_ps(c_out_reg, c_regs[r]);
+  }
   _mm256_storeu_ps(C, c_out_reg);
 }
 
@@ -147,7 +141,7 @@ experiment_result_t measure_condition(int M, int K, int repeats,
   fill_zero(B, K);
   fill_zero(C, M);
 
-  LIKWID_MARKER_START("Compute");  
+  LIKWID_MARKER_START("Compute");
   start = clock();
   for (int i = 0; i < repeats; i++) {
     function(A, B, C, M, K);
@@ -169,37 +163,46 @@ experiment_result_t measure_condition(int M, int K, int repeats,
 }
 
 int main(int argc, char **argv) {
-  if (argc <= 1) {
-    printf("usage: ./run function_num\n");
-    return 1;
-  }
-
   LIKWID_MARKER_INIT;
   LIKWID_MARKER_THREADINIT;
 
+  if (argc <= 2) {
+    printf("usage: ./run function_num function_param\n");
+    return 1;
+  }
+
+  void (*matvec_2_funcs[32])(float *, float *, float *, int, int) =
+      FTABLE_0_31(matvec_2);
+  void (*peak_flops_funcs[32])(float *, float *, float *, int, int) =
+      FTABLE_0_31(peak_flops);
+
   int function_num = atoi(argv[1]);
+  int function_parameter = atoi(argv[2]);
 
   void (*function)(float *, float *, float *, int, int);
   switch (function_num) {
   case 0:
     // get peak flops
-    function = &peak_flops;
+    function = peak_flops_funcs[function_parameter];
     break;
   case 1:
     function = &matvec_1;
     break;
   case 2:
-    function = &matvec_2<21>;
+    function = matvec_2_funcs[function_parameter];
     break;
   default:
     printf("Unrecognized function number %d", function_num);
     return 1;
   }
 
-  experiment_result_t result = measure_condition(10000, 10000, REPEATS, function);
-  print_experiment_result(result);
-
+  experiment_result_t result =
+      measure_condition(10000, 10000, REPEATS, function);
+  printf("%d,", function_num);
+  printf("%d,", function_parameter);
+  printf("%.4lf,", result.ms);
+  printf("%lld,", result.flop);
+  printf("%.4le\n", result.flops);
   LIKWID_MARKER_CLOSE;
-
   return 0;
 }
