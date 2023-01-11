@@ -9,7 +9,10 @@ a0: naive program and measurement, basic outlines
 #include <stdlib.h>
 #include <time.h>
 
-#define REPEATS 100
+#define LIKWID_PERFMON
+#include <likwid.h>
+
+#define REPEATS 1000
 #define EPS 1e-2
 
 typedef struct experiment_result {
@@ -57,13 +60,44 @@ bool is_same(float *arr1, float *arr2, int n) {
 
 // peak flops for something with O(MK) flop
 void peak_flops(float *A, float *B, float *C, int M, int K) {
-  __m256 a_reg = _mm256_set_ps(A[7], A[6], A[5], A[4], A[3], A[2], A[1], A[0]);
-  __m256 b_reg = _mm256_set_ps(B[7], B[6], B[5], B[4], B[3], B[2], B[1], B[0]);
+  __m256 a1_reg = _mm256_set_ps(A[7], A[6], A[5], A[4], A[3], A[2], A[1], A[0]);
+  __m256 b1_reg = _mm256_set_ps(B[7], B[6], B[5], B[4], B[3], B[2], B[1], B[0]);
 
-  for (int i = 0; i < M * K / 8; i++) {
-    a_reg = _mm256_fmadd_ps(a_reg, b_reg, a_reg);
+  __m256 c1_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
+  __m256 c2_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
+  __m256 c3_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
+  __m256 c4_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
+  __m256 c5_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
+  __m256 c6_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
+  __m256 c7_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
+  __m256 c8_reg = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, 0);
+
+  // want total flops to be M * K * 2 to match other matvecs
+  // inner loop does 8 * 2 * 8 flop so need to run M * K / (8 * 2) times
+  int iterations = M * K / (8 * 8); 
+  for (int i = 0; i < iterations; i++) {
+    // two fma units per core (CPI = 0.5), seems to saturate at 2 
+    c1_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c1_reg);
+    c2_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c2_reg);
+    c3_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c3_reg);
+    c4_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c4_reg);
+    c5_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c5_reg);
+    c6_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c6_reg);
+    c7_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c7_reg);
+    c8_reg = _mm256_fmadd_ps(a1_reg, b1_reg, c8_reg);
   }
-  _mm256_storeu_ps(C, a_reg);
+
+  __m256 c_out_reg = _mm256_set_ps(C[0], C[1], C[2], C[3], C[4], C[5], C[6], C[7]);
+  c_out_reg = _mm256_add_ps(c_out_reg, c1_reg);
+  c_out_reg = _mm256_add_ps(c_out_reg, c2_reg);
+  c_out_reg = _mm256_add_ps(c_out_reg, c3_reg);
+  c_out_reg = _mm256_add_ps(c_out_reg, c4_reg);
+  c_out_reg = _mm256_add_ps(c_out_reg, c5_reg);
+  c_out_reg = _mm256_add_ps(c_out_reg, c6_reg);
+  c_out_reg = _mm256_add_ps(c_out_reg, c7_reg);
+  c_out_reg = _mm256_add_ps(c_out_reg, c8_reg);
+
+  _mm256_storeu_ps(C, c_out_reg);
 }
 
 // baseline matvec multiplication
@@ -109,23 +143,24 @@ experiment_result_t measure_condition(int M, int K, int repeats,
   float *B = (float *)aligned_alloc(16 * sizeof(float), K * sizeof(float));
   float *C = (float *)aligned_alloc(16 * sizeof(float), M * sizeof(float));
 
-  // warmup
-  for (int i = 0; i < repeats; i++) {
-    function(A, B, C, M, K);
-  }
+  fill_zero(A, M * K);
+  fill_zero(B, K);
+  fill_zero(C, M);
 
+  LIKWID_MARKER_START("Compute");  
   start = clock();
   for (int i = 0; i < repeats; i++) {
     function(A, B, C, M, K);
   }
   end = clock();
+  LIKWID_MARKER_STOP("Compute");
 
   free(A);
   free(B);
   free(C);
 
-  double cpu_time_ms = (double)(end - start) / CLOCKS_PER_SEC / 10 * 1e3;
-  int flop = M * K * 2 * repeats;
+  double cpu_time_ms = (double)(end - start) / CLOCKS_PER_SEC * 1e3;
+  long long flop = M * K * 2L * repeats;
   double flops = (double)flop / (cpu_time_ms / 1e3);
 
   experiment_result_t results;
@@ -136,8 +171,11 @@ experiment_result_t measure_condition(int M, int K, int repeats,
 int main(int argc, char **argv) {
   if (argc <= 1) {
     printf("usage: ./run function_num\n");
-    return 0;
+    return 1;
   }
+
+  LIKWID_MARKER_INIT;
+  LIKWID_MARKER_THREADINIT;
 
   int function_num = atoi(argv[1]);
 
@@ -155,11 +193,13 @@ int main(int argc, char **argv) {
     break;
   default:
     printf("Unrecognized function number %d", function_num);
-    return 0;
+    return 1;
   }
 
-  experiment_result_t result = measure_condition(10000, 1000, 100, function);
+  experiment_result_t result = measure_condition(10000, 10000, REPEATS, function);
   print_experiment_result(result);
 
-  return 1;
+  LIKWID_MARKER_CLOSE;
+
+  return 0;
 }
