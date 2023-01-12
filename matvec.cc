@@ -146,6 +146,65 @@ template <int param_k> void matvec_2(float *A, float *B, float *C, int M, int K)
   }
 }
 
+// from https://stackoverflow.com/questions/13219146/how-to-sum-m256-horizontally
+float sum8(__m256 x) {
+    // hiQuad = ( x7, x6, x5, x4 )
+    const __m128 hiQuad = _mm256_extractf128_ps(x, 1);
+    // loQuad = ( x3, x2, x1, x0 )
+    const __m128 loQuad = _mm256_castps256_ps128(x);
+    // sumQuad = ( x3 + x7, x2 + x6, x1 + x5, x0 + x4 )
+    const __m128 sumQuad = _mm_add_ps(loQuad, hiQuad);
+    // loDual = ( -, -, x1 + x5, x0 + x4 )
+    const __m128 loDual = sumQuad;
+    // hiDual = ( -, -, x3 + x7, x2 + x6 )
+    const __m128 hiDual = _mm_movehl_ps(sumQuad, sumQuad);
+    // sumDual = ( -, -, x1 + x3 + x5 + x7, x0 + x2 + x4 + x6 )
+    const __m128 sumDual = _mm_add_ps(loDual, hiDual);
+    // lo = ( -, -, -, x0 + x2 + x4 + x6 )
+    const __m128 lo = sumDual;
+    // hi = ( -, -, -, x1 + x3 + x5 + x7 )
+    const __m128 hi = _mm_shuffle_ps(sumDual, sumDual, 0x1);
+    // sum = ( -, -, -, x0 + x1 + x2 + x3 + x4 + x5 + x6 + x7 )
+    const __m128 sum = _mm_add_ss(lo, hi);
+    return _mm_cvtss_f32(sum);
+}
+
+
+// block inner reduction, vectorize
+template <int param_num_inner_reduction, int vec_width=8> void matvec_3(float *A, float *B, float *C, int M, int K) {
+  int num_inner_reduction = param_num_inner_reduction;
+  if (num_inner_reduction == 0) {
+    num_inner_reduction = 1;
+  }
+
+  __m256 b_regs[num_inner_reduction];
+  for (int m = 0; m < M; m++) {
+    C[m] = 0;
+  } 
+
+  int ele_b_per_outer_loop = vec_width * num_inner_reduction;
+  int total_blocks_k = K / ele_b_per_outer_loop;
+  int remainder_blocks_k = K % ele_b_per_outer_loop;
+  for (int k_block = 0; k_block < total_blocks_k; k_block++) {
+    for (int inner_load = 0; inner_load < num_inner_reduction; inner_load++) {
+      b_regs[inner_load] = _mm256_load_ps(B);
+      B += vec_width;
+    }
+
+    for (int m = 0; m < M; m++) {
+      float* A_tmp = A + m * K + k_block * ele_b_per_outer_loop;
+      __m256 c_reg = _mm256_set1_ps(0);
+      for (int k = 0; k < num_inner_reduction; k++) {
+        __m256 a_reg = _mm256_load_ps(A_tmp);
+        A_tmp += vec_width;
+        c_reg = _mm256_fmadd_ps(a_reg, b_regs[k], c_reg);
+      }
+      C[m] += sum8(c_reg);
+    }
+  }
+}
+
+
 experiment_result_t measure_condition(int M, int K, int repeats,
                                       void (*function)(float *, float *,
                                                        float *, int, int)) {
@@ -199,10 +258,12 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  void (*matvec_2_funcs[32])(float *, float *, float *, int, int) =
-      FTABLE_0_31(matvec_2);
   void (*peak_flops_funcs[32])(float *, float *, float *, int, int) =
       FTABLE_0_31(peak_flops);
+  void (*matvec_2_funcs[32])(float *, float *, float *, int, int) =
+      FTABLE_0_31(matvec_2);
+  void (*matvec_3_funcs[32])(float *, float *, float *, int, int) =
+      FTABLE_0_31(matvec_3);
 
   int function_num = atoi(argv[1]);
   int function_parameter = atoi(argv[2]);
@@ -219,13 +280,16 @@ int main(int argc, char **argv) {
   case 2:
     function = matvec_2_funcs[function_parameter];
     break;
+  case 3:
+    function = matvec_3_funcs[function_parameter];
+    break;
   default:
     printf("Unrecognized function number %d", function_num);
     return 1;
   }
 
   experiment_result_t result =
-      measure_condition(10000, 10000, REPEATS, function);
+      measure_condition(1024 * 8, 1024 * 8, REPEATS, function);
   printf("%d,", function_num);
   printf("%d,", function_parameter);
   printf("%.4f,", result.ms);

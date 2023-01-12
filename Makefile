@@ -1,11 +1,19 @@
+.PHONY: launch_run, benchmark-peak, build 
+
+build: run run.asm 
+reports: build peak_avx2.csv block_inner.csv block_inner_vec.csv
+
 benchmark-peak: run run.asm 
 	likwid-perfctr -f -m -g FLOPS_SP -C N:0-1 ./run 0 9
-	
+
 peak_avx2.csv: run run.asm 
 	./sweep_param.sh 0 1 31 peak_avx2.csv
 
 block_inner.csv: run run.asm 
 	./sweep_param.sh 2 1 31 block_inner.csv
+
+block_inner_vec.csv: run run.asm 
+	./sweep_param.sh 3 1 31 block_inner_vec.csv
 
 run: matvec.cc
 	clang matvec.cc -O3 -march=znver2 -llikwid -o run 
