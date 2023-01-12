@@ -2,6 +2,9 @@
 run 
 run.asm 
 
+# Data files 
+*.csv 
+
 # Prerequisites
 *.d
 

@@ -12,9 +12,8 @@ a0: naive program and measurement, basic outlines
 #define LIKWID_PERFMON
 #include <likwid.h>
 
-// note ALL_FUNCTIONS4 first func passes in <1> as param instead of <0>
 #define ALL_FUNCTIONS4(FUNC, OFFSET)                                           \
-  &FUNC<1 + OFFSET>, &FUNC<1 + OFFSET>, &FUNC<2 + OFFSET>, &FUNC<3 + OFFSET>
+  &FUNC<0 + OFFSET>, &FUNC<1 + OFFSET>, &FUNC<2 + OFFSET>, &FUNC<3 + OFFSET>
 #define ALL_FUNCTIONS8(FUNC, OFFSET)                                           \
   ALL_FUNCTIONS4(FUNC, 0 + OFFSET), ALL_FUNCTIONS4(FUNC, 4 + OFFSET)
 #define ALL_FUNCTIONS16(FUNC, OFFSET)                                          \
@@ -65,8 +64,13 @@ bool is_same(float *arr1, float *arr2, int n) {
 // C, matrix of shape 512, 768
 
 // peak flops for something with O(MK) flop
-template <int fma_ops_inner_loop>
+template <int param_fma_ops_inner_loop>
 void peak_flops(float *A, float *B, float *C, int M, int K) {
+  int fma_ops_inner_loop = param_fma_ops_inner_loop;
+  if (fma_ops_inner_loop == 0) {
+    fma_ops_inner_loop = 1;
+  }
+
   __m256 a1_reg = _mm256_set_ps(A[7], A[6], A[5], A[4], A[3], A[2], A[1], A[0]);
   __m256 b1_reg = _mm256_set_ps(B[7], B[6], B[5], B[4], B[3], B[2], B[1], B[0]);
 
@@ -106,7 +110,12 @@ void matvec_1(float *A, float *B, float *C, int M, int K) {
 }
 
 // block inner reduction
-template <int k> void matvec_2(float *A, float *B, float *C, int M, int K) {
+template <int param_k> void matvec_2(float *A, float *B, float *C, int M, int K) {
+  int k = param_k;
+  if (k == 0) {
+    k = 1;
+  }
+
   for (int m = 0; m < M; m++) {
     C[m] = 0;
   }
