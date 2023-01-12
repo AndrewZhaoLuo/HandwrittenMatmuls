@@ -186,11 +186,13 @@ template <int param_num_inner_reduction, int vec_width=8> void matvec_3(float *A
   int total_blocks_k = K / ele_b_per_outer_loop;
   int remainder_blocks_k = K % ele_b_per_outer_loop;
   for (int k_block = 0; k_block < total_blocks_k; k_block++) {
+    float* B_tmp = B + k_block * ele_b_per_outer_loop;
     for (int inner_load = 0; inner_load < num_inner_reduction; inner_load++) {
-      b_regs[inner_load] = _mm256_load_ps(B);
-      B += vec_width;
+      b_regs[inner_load] = _mm256_load_ps(B_tmp);
+      B_tmp += vec_width;
     }
 
+    // calculate C[m]_partial
     for (int m = 0; m < M; m++) {
       float* A_tmp = A + m * K + k_block * ele_b_per_outer_loop;
       __m256 c_reg = _mm256_set1_ps(0);
@@ -214,10 +216,10 @@ experiment_result_t measure_condition(int M, int K, int repeats,
   float *B = (float *)aligned_alloc(16 * sizeof(float), K * sizeof(float));
   float *C = (float *)aligned_alloc(16 * sizeof(float), M * sizeof(float));
   float *C_ground_truth = (float *)aligned_alloc(16 * sizeof(float), M * sizeof(float));
-  fill_zero(A, M * K);
-  fill_zero(B, K);
-  fill_zero(C, M);
-  fill_zero(C_ground_truth, M);
+  fill_random(A, M * K);
+  fill_random(B, K);
+  fill_random(C, M);
+  fill_random(C_ground_truth, M);
 
   LIKWID_MARKER_START("Compute");
   start = clock();
