@@ -27,10 +27,11 @@ a0: naive program and measurement, basic outlines
 #define EPS 1e-2
 
 typedef struct experiment_result {
-  clock_t clock_cycles;
   double ms;
-  long long flop;
   double flops;
+  long long flop;
+  clock_t clock_cycles;
+  bool correctness;
 } experiment_result_t;
 
 /** DRIVER CODE HERE **/
@@ -82,12 +83,20 @@ void peak_flops(float *A, float *B, float *C, int M, int K) {
   // want total flops to be M * K * 2 to match other matvecs
   // inner loop does 8 * 2 * fma_ops_inner_loop flop so
   // need to run M * K / (8 * fma_ops_inner_loop) times
-  int iterations = M * K / (8 * fma_ops_inner_loop);
+  long long target_flop = M * K * 2;
+  long long flop_per_loop_iter = 8 * 2 * fma_ops_inner_loop;
+  int iterations = target_flop / flop_per_loop_iter;
+  int remainder = target_flop % flop_per_loop_iter;
+
   for (int i = 0; i < iterations; i++) {
     // two fma units per core (CPI = 0.5), seems to saturate at 2
     for (int r = 0; r < fma_ops_inner_loop; r++) {
       c_regs[r] = _mm256_fmadd_ps(a1_reg, b1_reg, c_regs[r]);
     }
+  }
+  // need remainder flops 
+  for (int i = 0; i < remainder; i++) {
+    C[0] += C[i % M];
   }
 
   __m256 c_out_reg =
@@ -145,10 +154,11 @@ experiment_result_t measure_condition(int M, int K, int repeats,
   float *A = (float *)aligned_alloc(16 * sizeof(float), M * K * sizeof(float));
   float *B = (float *)aligned_alloc(16 * sizeof(float), K * sizeof(float));
   float *C = (float *)aligned_alloc(16 * sizeof(float), M * sizeof(float));
-
+  float *C_ground_truth = (float *)aligned_alloc(16 * sizeof(float), M * sizeof(float));
   fill_zero(A, M * K);
   fill_zero(B, K);
   fill_zero(C, M);
+  fill_zero(C_ground_truth, M);
 
   LIKWID_MARKER_START("Compute");
   start = clock();
@@ -158,16 +168,25 @@ experiment_result_t measure_condition(int M, int K, int repeats,
   end = clock();
   LIKWID_MARKER_STOP("Compute");
 
+  // get ground truth 
+  matvec_1(A, B, C_ground_truth, M, K);
+  bool correctness = is_same(C, C_ground_truth, M);
+
   free(A);
   free(B);
   free(C);
+  free(C_ground_truth);
 
   double cpu_time_ms = (double)(end - start) / CLOCKS_PER_SEC * 1e3;
   long long flop = M * K * 2L * repeats;
   double flops = (double)flop / (cpu_time_ms / 1e3);
 
   experiment_result_t results;
-  results = (experiment_result_t){end - start, cpu_time_ms, flop, flops};
+  results.ms = cpu_time_ms;
+  results.flops = flops;
+  results.flop = flop;
+  results.clock_cycles = end - start;
+  results.correctness = correctness;
   return results;
 }
 
@@ -209,9 +228,10 @@ int main(int argc, char **argv) {
       measure_condition(10000, 10000, REPEATS, function);
   printf("%d,", function_num);
   printf("%d,", function_parameter);
-  printf("%.4lf,", result.ms);
+  printf("%.4f,", result.ms);
   printf("%lld,", result.flop);
-  printf("%.4le\n", result.flops);
+  printf("%.4e,", result.flops);
+  printf("%d\n", result.correctness);
   LIKWID_MARKER_CLOSE;
   return 0;
 }
