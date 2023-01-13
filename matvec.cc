@@ -94,7 +94,7 @@ void peak_flops(float *A, float *B, float *C, int M, int K) {
       c_regs[r] = _mm256_fmadd_ps(a1_reg, b1_reg, c_regs[r]);
     }
   }
-  // need remainder flops 
+  // need remainder flops
   for (int i = 0; i < remainder; i++) {
     C[0] += C[i % M];
   }
@@ -119,7 +119,8 @@ void matvec_1(float *A, float *B, float *C, int M, int K) {
 }
 
 // block inner reduction
-template <int param_k> void matvec_2(float *A, float *B, float *C, int M, int K) {
+template <int param_k>
+void matvec_2(float *A, float *B, float *C, int M, int K) {
   int k = param_k;
   if (k == 0) {
     k = 1;
@@ -146,32 +147,33 @@ template <int param_k> void matvec_2(float *A, float *B, float *C, int M, int K)
   }
 }
 
-// from https://stackoverflow.com/questions/13219146/how-to-sum-m256-horizontally
+// from
+// https://stackoverflow.com/questions/13219146/how-to-sum-m256-horizontally
 float sum8(__m256 x) {
-    // hiQuad = ( x7, x6, x5, x4 )
-    const __m128 hiQuad = _mm256_extractf128_ps(x, 1);
-    // loQuad = ( x3, x2, x1, x0 )
-    const __m128 loQuad = _mm256_castps256_ps128(x);
-    // sumQuad = ( x3 + x7, x2 + x6, x1 + x5, x0 + x4 )
-    const __m128 sumQuad = _mm_add_ps(loQuad, hiQuad);
-    // loDual = ( -, -, x1 + x5, x0 + x4 )
-    const __m128 loDual = sumQuad;
-    // hiDual = ( -, -, x3 + x7, x2 + x6 )
-    const __m128 hiDual = _mm_movehl_ps(sumQuad, sumQuad);
-    // sumDual = ( -, -, x1 + x3 + x5 + x7, x0 + x2 + x4 + x6 )
-    const __m128 sumDual = _mm_add_ps(loDual, hiDual);
-    // lo = ( -, -, -, x0 + x2 + x4 + x6 )
-    const __m128 lo = sumDual;
-    // hi = ( -, -, -, x1 + x3 + x5 + x7 )
-    const __m128 hi = _mm_shuffle_ps(sumDual, sumDual, 0x1);
-    // sum = ( -, -, -, x0 + x1 + x2 + x3 + x4 + x5 + x6 + x7 )
-    const __m128 sum = _mm_add_ss(lo, hi);
-    return _mm_cvtss_f32(sum);
+  // hiQuad = ( x7, x6, x5, x4 )
+  const __m128 hiQuad = _mm256_extractf128_ps(x, 1);
+  // loQuad = ( x3, x2, x1, x0 )
+  const __m128 loQuad = _mm256_castps256_ps128(x);
+  // sumQuad = ( x3 + x7, x2 + x6, x1 + x5, x0 + x4 )
+  const __m128 sumQuad = _mm_add_ps(loQuad, hiQuad);
+  // loDual = ( -, -, x1 + x5, x0 + x4 )
+  const __m128 loDual = sumQuad;
+  // hiDual = ( -, -, x3 + x7, x2 + x6 )
+  const __m128 hiDual = _mm_movehl_ps(sumQuad, sumQuad);
+  // sumDual = ( -, -, x1 + x3 + x5 + x7, x0 + x2 + x4 + x6 )
+  const __m128 sumDual = _mm_add_ps(loDual, hiDual);
+  // lo = ( -, -, -, x0 + x2 + x4 + x6 )
+  const __m128 lo = sumDual;
+  // hi = ( -, -, -, x1 + x3 + x5 + x7 )
+  const __m128 hi = _mm_shuffle_ps(sumDual, sumDual, 0x1);
+  // sum = ( -, -, -, x0 + x1 + x2 + x3 + x4 + x5 + x6 + x7 )
+  const __m128 sum = _mm_add_ss(lo, hi);
+  return _mm_cvtss_f32(sum);
 }
 
-
 // block inner reduction, vectorize
-template <int param_num_inner_reduction, int vec_width=8> void matvec_3(float *A, float *B, float *C, int M, int K) {
+template <int param_num_inner_reduction, int vec_width = 8>
+void matvec_3(float *A, float *B, float *C, int M, int K) {
   int num_inner_reduction = param_num_inner_reduction;
   if (num_inner_reduction == 0) {
     num_inner_reduction = 1;
@@ -180,21 +182,20 @@ template <int param_num_inner_reduction, int vec_width=8> void matvec_3(float *A
   __m256 b_regs[num_inner_reduction];
   for (int m = 0; m < M; m++) {
     C[m] = 0;
-  } 
+  }
 
   int ele_b_per_outer_loop = vec_width * num_inner_reduction;
   int total_blocks_k = K / ele_b_per_outer_loop;
   int remainder_blocks_k = K % ele_b_per_outer_loop;
   for (int k_block = 0; k_block < total_blocks_k; k_block++) {
-    float* B_tmp = B + k_block * ele_b_per_outer_loop;
     for (int inner_load = 0; inner_load < num_inner_reduction; inner_load++) {
-      b_regs[inner_load] = _mm256_load_ps(B_tmp);
-      B_tmp += vec_width;
+      b_regs[inner_load] = _mm256_load_ps(B);
+      B += vec_width;
     }
 
     // calculate C[m]_partial
     for (int m = 0; m < M; m++) {
-      float* A_tmp = A + m * K + k_block * ele_b_per_outer_loop;
+      float *A_tmp = A + m * K + k_block * ele_b_per_outer_loop;
       __m256 c_reg = _mm256_set1_ps(0);
       for (int k = 0; k < num_inner_reduction; k++) {
         __m256 a_reg = _mm256_load_ps(A_tmp);
@@ -204,8 +205,18 @@ template <int param_num_inner_reduction, int vec_width=8> void matvec_3(float *A
       C[m] += sum8(c_reg);
     }
   }
-}
 
+  // use remaining K-elements
+  // at this point B ptr has been moved to the last remaining ele in the k dim
+  for (int m = 0; m < M; m++) {
+    float result = 0;
+    for (int remainder_k = 0; remainder_k < remainder_blocks_k; remainder_k++) {
+      result += B[remainder_k] *
+                A[m * K + total_blocks_k * ele_b_per_outer_loop + remainder_k];
+    }
+    C[m] += result;
+  }
+}
 
 experiment_result_t measure_condition(int M, int K, int repeats,
                                       void (*function)(float *, float *,
@@ -215,7 +226,8 @@ experiment_result_t measure_condition(int M, int K, int repeats,
   float *A = (float *)aligned_alloc(16 * sizeof(float), M * K * sizeof(float));
   float *B = (float *)aligned_alloc(16 * sizeof(float), K * sizeof(float));
   float *C = (float *)aligned_alloc(16 * sizeof(float), M * sizeof(float));
-  float *C_ground_truth = (float *)aligned_alloc(16 * sizeof(float), M * sizeof(float));
+  float *C_ground_truth =
+      (float *)aligned_alloc(16 * sizeof(float), M * sizeof(float));
   fill_random(A, M * K);
   fill_random(B, K);
   fill_random(C, M);
@@ -229,7 +241,7 @@ experiment_result_t measure_condition(int M, int K, int repeats,
   end = clock();
   LIKWID_MARKER_STOP("Compute");
 
-  // get ground truth 
+  // get ground truth
   matvec_1(A, B, C_ground_truth, M, K);
   bool correctness = is_same(C, C_ground_truth, M);
 
