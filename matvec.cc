@@ -218,6 +218,43 @@ void matvec_3(float *A, float *B, float *C, int M, int K) {
   }
 }
 
+// stream contiguous cache lines of matrix in, block registers for vector still
+template <int vec_width = 8>
+void matvec_4(float *A, float *B, float *C, int M, int K) {
+  // load k regs, at end B will point to remainders
+  int num_k_regs = K / vec_width;
+  int num_remainder_k = K % vec_width;
+
+  // this is like packing B on the stack
+  __m256 b_regs[num_k_regs];
+  float b_remainder[num_remainder_k];
+  for (int loads = 0; loads < num_k_regs; loads++) {
+    b_regs[loads] = _mm256_load_ps(B);
+    B += vec_width;
+  }
+  for (int load_remainder = 0; load_remainder < num_remainder_k; load_remainder++) {
+    b_remainder[load_remainder] = *B;
+    B++;
+  }
+
+  for (int m = 0; m < M; m++) {
+    float ans = 0;
+    for (int k_block = 0; k_block < num_k_regs; k_block++) {
+      __m256 c_reg = _mm256_set1_ps(0);
+      __m256 a_reg = _mm256_load_ps(A);
+      A += vec_width;
+      c_reg = _mm256_fmadd_ps(a_reg, b_regs[k_block], c_reg);
+      ans += sum8(c_reg);
+    }
+
+    for (int remainder_k = 0; remainder_k < num_remainder_k; remainder_k++) {
+      ans += *A * b_remainder[remainder_k];
+      A++;
+    }
+    C[m] = ans;
+  }
+}
+
 experiment_result_t measure_condition(int M, int K, int repeats,
                                       void (*function)(float *, float *,
                                                        float *, int, int)) {
@@ -296,6 +333,9 @@ int main(int argc, char **argv) {
     break;
   case 3:
     function = matvec_3_funcs[function_parameter];
+    break;
+  case 4:
+    function = &matvec_4;
     break;
   default:
     printf("Unrecognized function number %d", function_num);
