@@ -118,6 +118,18 @@ void matvec_1(float *A, float *B, float *C, int M, int K) {
   }
 }
 
+// baseline matvec multiplication with transposed A
+void matvecT_1(float *A, float *B, float *C, int M, int K) {
+  for (int m = 0; m < M; m++) {
+    C[m] = 0;
+  }
+  for (int k = 0; k < K; k++) {
+    for (int m = 0; m < M; m++) {
+      C[m] += A[k * M + m] * B[k];
+    }
+  }
+}
+
 // block inner reduction
 template <int param_k>
 void matvec_2(float *A, float *B, float *C, int M, int K) {
@@ -255,9 +267,39 @@ void matvec_4(float *A, float *B, float *C, int M, int K) {
   }
 }
 
+// manually vectorized transposed conv.
+template <int vec_width = 8>
+void matvecT_5(float* A, float* B, float*C, int M, int K) {
+  for (int m = 0; m < M; m++) {
+    C[m] = 0;
+  }
+
+  for (int k = 0; k < K; k++) {
+    __m256 b_reg = _mm256_set1_ps(B[k]);
+
+    int blocks_A = M / vec_width;
+    int remainder_A = M % vec_width;
+    float* C_tmp = C;
+    for (int m_load = 0; m_load < blocks_A; m_load++) {
+      __m256 a_reg = _mm256_load_ps(A);
+      __m256 c_reg = _mm256_load_ps(C_tmp);
+      __m256 c_out = _mm256_fmadd_ps(a_reg, b_reg, c_reg);
+      _mm256_store_ps(C_tmp, c_out);
+      A += vec_width;
+      C_tmp += vec_width;
+    }
+
+    for (int m_load_remainder = 0; m_load_remainder < remainder_A; m_load_remainder++) {
+      *C_tmp = *C_tmp + *A * B[k];
+      C_tmp++;
+      A++;
+    }
+  }
+}
+
 experiment_result_t measure_condition(int M, int K, int repeats,
                                       void (*function)(float *, float *,
-                                                       float *, int, int)) {
+                                                       float *, int, int), bool transposed=false) {
   clock_t start, end;
 
   float *A = (float *)aligned_alloc(16 * sizeof(float), M * K * sizeof(float));
@@ -279,7 +321,11 @@ experiment_result_t measure_condition(int M, int K, int repeats,
   LIKWID_MARKER_STOP("Compute");
 
   // get ground truth
-  matvec_1(A, B, C_ground_truth, M, K);
+  if (transposed) {
+    matvecT_1(A, B, C_ground_truth, M, K);
+  } else {
+    matvec_1(A, B, C_ground_truth, M, K);
+  }
   bool correctness = is_same(C, C_ground_truth, M);
 
   free(A);
@@ -320,6 +366,7 @@ int main(int argc, char **argv) {
   int function_parameter = atoi(argv[2]);
 
   void (*function)(float *, float *, float *, int, int);
+  bool transposed = false;
   switch (function_num) {
   case 0:
     // get peak flops
@@ -337,13 +384,21 @@ int main(int argc, char **argv) {
   case 4:
     function = &matvec_4;
     break;
+  case 5:
+    function = &matvecT_1;
+    transposed = true;
+    break;
+  case 6:
+    function = &matvecT_5;
+    transposed = true;
+    break;
   default:
     printf("Unrecognized function number %d", function_num);
     return 1;
   }
 
   experiment_result_t result =
-      measure_condition(1024 * 8, 1024 * 8, REPEATS, function);
+      measure_condition(1024 * 9, 1024 * 9, REPEATS, function, transposed);
   printf("%d,", function_num);
   printf("%d,", function_parameter);
   printf("%.4f,", result.ms);
