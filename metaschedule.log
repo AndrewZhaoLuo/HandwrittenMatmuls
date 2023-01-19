@@ -1,0 +1,191 @@
+Tuning mod:
+def @main(%data: Tensor[(9216, 9216), float32] /* ty=Tensor[(9216, 9216), float32] */, %weight: Tensor[(9216, 1), float32] /* ty=Tensor[(9216, 1), float32] */) -> Tensor[(9216, 1), float32] {
+  nn.matmul(%data, %weight, units=None) /* ty=Tensor[(9216, 1), float32] */
+}
+
+2023-01-19 11:20:12 [INFO] Logging directory: tmp_out/logs
+2023-01-19 11:20:16 [INFO] LocalBuilder: max_workers = 12
+2023-01-19 11:20:17 [INFO] LocalRunner: max_workers = 1
+2023-01-19 11:20:18 [INFO] [task_scheduler.cc:159] Initializing Task #0: "fused_nn_matmul"
+[11:20:18] /home/andrewzhaoluo/Desktop/dev/tvm/src/meta_schedule/task_scheduler/gradient_based.cc:63: c[3J[2J[0m[H
+2023-01-19 11:20:18 [INFO] [task_scheduler.cc:320] 
+ ID |            Name |      FLOP | Weight | Speed (GFLOPS) | Latency (us) | Weighted Latency (us) | Trials | Done 
+-------------------------------------------------------------------------------------------------------------------
+  0 | fused_nn_matmul | 169869312 |      1 |            N/A |          N/A |                   N/A |      0 |      
+-------------------------------------------------------------------------------------------------------------------
+Total trials: 0
+Total latency (us): 0
+
+2023-01-19 11:20:18 [INFO] [task_scheduler.cc:180] TaskScheduler picks Task #0: "fused_nn_matmul"
+2023-01-19 11:20:19 [INFO] [task_scheduler.cc:193] Sending 64 sample(s) to builder
+2023-01-19 11:20:27 [INFO] [task_scheduler.cc:195] Sending 64 sample(s) to runner
+2023-01-19 11:23:11 [DEBUG] XGB iter   0: tr-p-rmse: 0.443522	tr-a-peak@32: 1.000000	tr-rmse: 0.249612	tr-rmse: 0.249612
+2023-01-19 11:23:11 [DEBUG] XGB iter  25: tr-p-rmse: 0.056162	tr-a-peak@32: 1.000000	tr-rmse: 0.282720	tr-rmse: 0.282720
+2023-01-19 11:23:11 [DEBUG] XGB iter  50: tr-p-rmse: 0.046758	tr-a-peak@32: 1.000000	tr-rmse: 0.282503	tr-rmse: 0.282503
+2023-01-19 11:23:11 [DEBUG] XGB iter  75: tr-p-rmse: 0.046758	tr-a-peak@32: 1.000000	tr-rmse: 0.282503	tr-rmse: 0.282503
+2023-01-19 11:23:11 [DEBUG] XGB stopped. Best iteration: [47] tr-p-rmse:0.04676	tr-a-peak@32:1.00000	tr-rmse:0.28250	tr-rmse:0.28250 
+[11:23:11] /home/andrewzhaoluo/Desktop/dev/tvm/src/meta_schedule/task_scheduler/task_scheduler.cc:236: c[3J[2J[0m[H
+2023-01-19 11:23:11 [INFO] [task_scheduler.cc:237] [Updated] Task #0: "fused_nn_matmul"
+2023-01-19 11:23:11 [INFO] [task_scheduler.cc:320] 
+ ID |            Name |      FLOP | Weight | Speed (GFLOPS) | Latency (us) | Weighted Latency (us) | Trials | Done 
+-------------------------------------------------------------------------------------------------------------------
+  0 | fused_nn_matmul | 169869312 |      1 |         6.6980 |   25361.0968 |            25361.0968 |     64 |      
+-------------------------------------------------------------------------------------------------------------------
+Total trials: 64
+Total latency (us): 25361.1
+
+2023-01-19 11:23:11 [INFO] [task_scheduler.cc:180] TaskScheduler picks Task #0: "fused_nn_matmul"
+2023-01-19 11:23:13 [INFO] [task_scheduler.cc:193] Sending 64 sample(s) to builder
+2023-01-19 11:23:20 [INFO] [task_scheduler.cc:195] Sending 64 sample(s) to runner
+2023-01-19 11:26:01 [DEBUG] XGB validation: p-rmse: 0.197512	a-peak@32: 0.982653
+2023-01-19 11:26:01 [DEBUG] XGB iter   0: tr-p-rmse: 0.433968	tr-a-peak@32: 0.999265	tr-rmse: 0.234983	tr-rmse: 0.234983
+2023-01-19 11:26:01 [DEBUG] XGB iter  25: tr-p-rmse: 0.040888	tr-a-peak@32: 1.000000	tr-rmse: 0.254674	tr-rmse: 0.254674
+2023-01-19 11:26:01 [DEBUG] XGB iter  50: tr-p-rmse: 0.036887	tr-a-peak@32: 1.000000	tr-rmse: 0.254653	tr-rmse: 0.254653
+2023-01-19 11:26:01 [DEBUG] XGB iter  75: tr-p-rmse: 0.036887	tr-a-peak@32: 1.000000	tr-rmse: 0.254653	tr-rmse: 0.254653
+2023-01-19 11:26:01 [DEBUG] XGB stopped. Best iteration: [46] tr-p-rmse:0.03689	tr-a-peak@32:1.00000	tr-rmse:0.25465	tr-rmse:0.25465 
+[11:26:01] /home/andrewzhaoluo/Desktop/dev/tvm/src/meta_schedule/task_scheduler/task_scheduler.cc:236: c[3J[2J[0m[H
+2023-01-19 11:26:01 [INFO] [task_scheduler.cc:237] [Updated] Task #0: "fused_nn_matmul"
+2023-01-19 11:26:01 [INFO] [task_scheduler.cc:320] 
+ ID |            Name |      FLOP | Weight | Speed (GFLOPS) | Latency (us) | Weighted Latency (us) | Trials | Done 
+-------------------------------------------------------------------------------------------------------------------
+  0 | fused_nn_matmul | 169869312 |      1 |         6.8593 |   24764.9596 |            24764.9596 |    128 |      
+-------------------------------------------------------------------------------------------------------------------
+Total trials: 128
+Total latency (us): 24765
+
+2023-01-19 11:26:01 [INFO] [task_scheduler.cc:180] TaskScheduler picks Task #0: "fused_nn_matmul"
+2023-01-19 11:26:04 [INFO] [task_scheduler.cc:193] Sending 64 sample(s) to builder
+2023-01-19 11:26:07 [INFO] [task_scheduler.cc:195] Sending 64 sample(s) to runner
+2023-01-19 11:28:32 [DEBUG] XGB validation: p-rmse: 0.255306	a-peak@32: 0.999684
+2023-01-19 11:28:32 [DEBUG] XGB iter   0: tr-p-rmse: 0.387808	tr-a-peak@32: 0.998284	tr-rmse: 0.310848	tr-rmse: 0.310848
+2023-01-19 11:28:32 [DEBUG] XGB iter  25: tr-p-rmse: 0.060915	tr-a-peak@32: 0.999023	tr-rmse: 0.319096	tr-rmse: 0.319096
+2023-01-19 11:28:32 [DEBUG] XGB iter  50: tr-p-rmse: 0.058750	tr-a-peak@32: 0.999023	tr-rmse: 0.319266	tr-rmse: 0.319266
+2023-01-19 11:28:32 [DEBUG] XGB iter  75: tr-p-rmse: 0.058750	tr-a-peak@32: 0.999023	tr-rmse: 0.319266	tr-rmse: 0.319266
+2023-01-19 11:28:32 [DEBUG] XGB stopped. Best iteration: [42] tr-p-rmse:0.05875	tr-a-peak@32:0.99902	tr-rmse:0.31926	tr-rmse:0.31926 
+[11:28:32] /home/andrewzhaoluo/Desktop/dev/tvm/src/meta_schedule/task_scheduler/task_scheduler.cc:236: c[3J[2J[0m[H
+2023-01-19 11:28:32 [INFO] [task_scheduler.cc:237] [Updated] Task #0: "fused_nn_matmul"
+2023-01-19 11:28:32 [INFO] [task_scheduler.cc:320] 
+ ID |            Name |      FLOP | Weight | Speed (GFLOPS) | Latency (us) | Weighted Latency (us) | Trials | Done 
+-------------------------------------------------------------------------------------------------------------------
+  0 | fused_nn_matmul | 169869312 |      1 |         6.8781 |   24697.1662 |            24697.1662 |    192 |      
+-------------------------------------------------------------------------------------------------------------------
+Total trials: 192
+Total latency (us): 24697.2
+
+2023-01-19 11:28:32 [INFO] [task_scheduler.cc:180] TaskScheduler picks Task #0: "fused_nn_matmul"
+2023-01-19 11:28:35 [INFO] [task_scheduler.cc:193] Sending 64 sample(s) to builder
+2023-01-19 11:28:38 [INFO] [task_scheduler.cc:195] Sending 64 sample(s) to runner
+2023-01-19 11:31:05 [DEBUG] XGB validation: p-rmse: 0.250154	a-peak@32: 0.999526
+2023-01-19 11:31:05 [DEBUG] XGB iter   0: tr-p-rmse: 0.368184	tr-a-peak@32: 0.999444	tr-rmse: 0.334595	tr-rmse: 0.334595
+2023-01-19 11:31:05 [DEBUG] XGB iter  25: tr-p-rmse: 0.070258	tr-a-peak@32: 0.999656	tr-rmse: 0.326860	tr-rmse: 0.326860
+2023-01-19 11:31:05 [DEBUG] XGB iter  50: tr-p-rmse: 0.066293	tr-a-peak@32: 0.999690	tr-rmse: 0.327011	tr-rmse: 0.327011
+2023-01-19 11:31:05 [DEBUG] XGB iter  75: tr-p-rmse: 0.066292	tr-a-peak@32: 0.999690	tr-rmse: 0.327012	tr-rmse: 0.327012
+2023-01-19 11:31:05 [DEBUG] XGB iter 100: tr-p-rmse: 0.066292	tr-a-peak@32: 0.999690	tr-rmse: 0.327012	tr-rmse: 0.327012
+2023-01-19 11:31:05 [DEBUG] XGB stopped. Best iteration: [55] tr-p-rmse:0.06629	tr-a-peak@32:0.99969	tr-rmse:0.32701	tr-rmse:0.32701 
+[11:31:06] /home/andrewzhaoluo/Desktop/dev/tvm/src/meta_schedule/task_scheduler/task_scheduler.cc:236: c[3J[2J[0m[H
+2023-01-19 11:31:06 [INFO] [task_scheduler.cc:237] [Updated] Task #0: "fused_nn_matmul"
+2023-01-19 11:31:06 [INFO] [task_scheduler.cc:320] 
+ ID |            Name |      FLOP | Weight | Speed (GFLOPS) | Latency (us) | Weighted Latency (us) | Trials | Done 
+-------------------------------------------------------------------------------------------------------------------
+  0 | fused_nn_matmul | 169869312 |      1 |         6.9099 |   24583.5954 |            24583.5954 |    256 |      
+-------------------------------------------------------------------------------------------------------------------
+Total trials: 256
+Total latency (us): 24583.6
+
+[11:31:06] /home/andrewzhaoluo/Desktop/dev/tvm/src/meta_schedule/task_scheduler/task_scheduler.cc:259: c[3J[2J[0m[H
+2023-01-19 11:31:06 [INFO] [task_scheduler.cc:260] Task #0 has finished. Remaining task(s): 0
+2023-01-19 11:31:06 [INFO] [task_scheduler.cc:320] 
+ ID |            Name |      FLOP | Weight | Speed (GFLOPS) | Latency (us) | Weighted Latency (us) | Trials | Done 
+-------------------------------------------------------------------------------------------------------------------
+  0 | fused_nn_matmul | 169869312 |      1 |         6.9099 |   24583.5954 |            24583.5954 |    256 |    Y 
+-------------------------------------------------------------------------------------------------------------------
+Total trials: 256
+Total latency (us): 24583.6
+
+[11:31:06] /home/andrewzhaoluo/Desktop/dev/tvm/src/relay/backend/te_compiler_cache.cc:651: Warning: Cannot find workload: vm_mod_fused_meta_schedule_layout_transform
+[11:31:06] /home/andrewzhaoluo/Desktop/dev/tvm/src/target/llvm/codegen_cpu.cc:1511: Warning: Unknown pragma pragma_auto_unroll_max_step
+[11:31:06] /home/andrewzhaoluo/Desktop/dev/tvm/src/target/llvm/codegen_cpu.cc:1511: Warning: Unknown pragma pragma_unroll_explicit
+[11:31:07] /home/andrewzhaoluo/Desktop/dev/tvm/src/relay/backend/te_compiler_cache.cc:651: Warning: Cannot find workload: vm_mod_fused_meta_schedule_layout_transform
+/home/andrewzhaoluo/Desktop/dev/tvm/venv/lib/python3.8/site-packages/xgboost/compat.py:31: FutureWarning: pandas.Int64Index is deprecated and will be removed from pandas in a future version. Use pandas.Index with the appropriate dtype instead.
+  from pandas import MultiIndex, Int64Index
+Tuning Time:
+ ID |                                        Name | Time (min) | Percentage 
+----------------------------------------------------------------------------
+    |                                       Total |    10.8845 |   100.0000 
+  1 |                                SendToRunner |    10.2389 |    94.0685 
+  2 |                               SendToBuilder |     0.3808 |     3.4985 
+  3 |     EvoSearch/Evolve/PredictNormalizedScore |     0.0544 |     0.5001 
+  4 |                   EvoSearch/Evolve/Mutation |     0.0424 |     0.3891 
+  5 |             MeasureCallback/UpdateCostModel |     0.0311 |     0.2859 
+  6 |                       EvoSearch/Evolve/Misc |     0.0213 |     0.1959 
+  7 |              EvoSearch/SampleInitPopulation |     0.0091 |     0.0834 
+  8 |              EvoSearch/PickBestFromDatabase |     0.0024 |     0.0220 
+  9 |               MeasureCallback/AddToDatabase |     0.0021 |     0.0195 
+ 10 |         MeasureCallback/RemoveBuildArtifact |     0.0006 |     0.0051 
+ 11 |                 EvoSearch/PickWithEpsGreedy |     0.0004 |     0.0041 
+ 12 |                              TaskExtraction |     0.0003 |     0.0027 
+ 13 |                           JoinRunnerFutures |     0.0002 |     0.0015 
+ 14 |                              InitializeTask |     0.0000 |     0.0002 
+ 15 | EvoSearch/Evolve/Misc/CopyMeasuredWorkloads |     0.0000 |     0.0000 
+----------------------------------------------------------------------------
+@vm_mod_fused_nn_matmul **************************************************
+# from tvm.script import tir as T
+@T.prim_func
+def func(p0: T.Buffer[(T.int64(9216), T.int64(9216)), "float32"], p1_global: T.Buffer[(T.int64(4608), T.int64(2)), "float32"], T_matmul_NN: T.Buffer[(T.int64(9216), T.int64(1)), "float32"]):
+    # function attr dict
+    T.func_attr({"hash": "a111b3f1dd2f2536", "target": T.target({"num-cores":1, "kind":"llvm", "host":T.target({"kind":"llvm", "tag":"", "keys":["cpu"], "num-cores":1}), "tag":"", "keys":["cpu"]}), "tir.noalias": True, "global_symbol": "vm_mod_fused_nn_matmul", "layout_free_buffers": [1], "Primitive": 1})
+    i_0_fused = T.var("int64")
+    # buffer definition
+    T_matmul_NN_1 = T.buffer_decl([T.int64(9216)], dtype="float32", data=T_matmul_NN.data)
+    p0_1 = T.buffer_decl([T.int64(84934656)], dtype="float32", data=p0.data)
+    p1_global_1 = T.buffer_decl([T.int64(9216)], dtype="float32", data=p1_global.data)
+    # body
+    T.attr(i_0_fused, "pragma_auto_unroll_max_step", T.int64(64))
+    T.attr(i_0_fused, "pragma_unroll_explicit", T.int64(1))
+    for i_0_fused_1 in T.parallel(96):
+        T_matmul_NN_global = T.allocate([2], "float32", "global")
+        T_matmul_NN_global_1 = T.buffer_decl([T.int64(2)], dtype="float32", data=T_matmul_NN_global)
+        for i_1 in T.serial(48):
+            for i_2_init in T.serial(2):
+                T_matmul_NN_global_1[i_2_init] = T.float32(0)
+            for k_0, i_2, k_1 in T.grid(4608, 2, 2):
+                cse_var_1: T.int32 = k_0 * 2
+                T_matmul_NN_global_1[i_2] = T_matmul_NN_global_1[i_2] + p0_1[i_0_fused_1 * 884736 + i_1 * 18432 + i_2 * 9216 + cse_var_1 + k_1] * p1_global_1[cse_var_1 + k_1]
+            T_matmul_NN_1[i_0_fused_1 * 96 + i_1 * 2:i_0_fused_1 * 96 + i_1 * 2 + 2] = T_matmul_NN_global_1[0:2]
+
+
+@vm_mod_fused_meta_schedule_layout_transform **************************************************
+# from tvm.script import tir as T
+@T.prim_func
+def func(p0: T.Buffer[(9216, 1), "float32"], T_meta_schedule_layout_trans: T.Buffer[(4608, 2), "float32"]):
+    # function attr dict
+    T.func_attr({"hash": "0a8d878f6a748618", "target": T.target({"num-cores":1, "kind":"llvm", "host":T.target({"kind":"llvm", "tag":"", "keys":["cpu"], "num-cores":1}), "tag":"", "keys":["cpu"]}), "tir.noalias": True, "global_symbol": "vm_mod_fused_meta_schedule_layout_transform", "from_legacy_te_schedule": True})
+    # buffer definition
+    T_meta_schedule_layout_trans_1 = T.buffer_decl([9216], dtype="float32", data=T_meta_schedule_layout_trans.data)
+    p0_1 = T.buffer_decl([9216], dtype="float32", data=p0.data)
+    # body
+    for ax0 in T.parallel(4608):
+        cse_var_1: T.int32 = ax0 * 2
+        T_meta_schedule_layout_trans_1[cse_var_1:cse_var_1 + 2] = p0_1[cse_var_1:cse_var_1 + 2]
+
+
+Execution time summary:
+ mean (ms)   median (ms)    max (ms)     min (ms)     std (ms)  
+  58.7843      58.7843      58.7843      58.7843       0.0000   
+               
+Name                                         Duration (us)  Percent  Device  Count                                          Argument Shapes              Hash  VM::Argument Shapes  
+vm_mod_fused_nn_matmul                           58,803.35    99.86    cpu0      1  float32[9216, 9216], float32[4608, 2], float32[9216, 1]  a111b3f1dd2f2536                       
+vm_mod_fused_meta_schedule_layout_transform           4.99     0.01    cpu0      1                       float32[9216, 1], float32[4608, 2]  0a8d878f6a748618                       
+VM::AllocStorage                                      2.70     0.00    cpu0      2                                                                                  float32[36864]  
+VM::UnknownOp                                         2.09     0.00    cpu0      5                                                                                                  
+VM::AllocTensor                                       1.21     0.00    cpu0      1                                         float32[4608, 2]                                         
+VM::AllocTensor                                       0.87     0.00    cpu0      1                                         float32[9216, 1]                                         
+----------                                                                                                                                                                          
+Sum                                              58,815.21    99.88             11                                                                                                  
+Total                                            58,886.44             cpu0      1                                                                                                  
+
+Configuration
+-------------
+Number of threads: 1
+Executor: VM
+
