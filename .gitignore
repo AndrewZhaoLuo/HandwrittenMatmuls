@@ -37,3 +37,6 @@ run.asm
 *.exe
 *.out
 *.app
+
+# Vscode stuff
+.vscode
