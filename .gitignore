@@ -40,3 +40,6 @@ run.asm
 
 # Vscode stuff
 .vscode
+
+# Directory used for building
+build/
