@@ -7,12 +7,21 @@ CXXFLAGS := $(OPT) $(DEBUG) $(INCLUDES) -std=c++17
 LDFLAGS := -O3
 
 OUTPUT_DIR = build
+OBJECTS = $(patsubst %.cpp, $(OUTPUT_DIR)/%.o, $(ALL_SRC)) 
+
+default : all
 
 $(OUTPUT_DIR):
 	mkdir -p $(OUTPUT_DIR)
 
+$(OBJECTS): | $(OUTPUT_DIR)
 $(OUTPUT_DIR)/%.o : lib/%.cpp $(OUTPUT_DIR)
 	$(CXX) $(CXXFLAGS) $(DEFINES) -c $< -o $@
 
-% : $(OUTPUT_DIR)/%.o
-	$(CXX) $(LDFLAGS) $(LDLIBS) $^ -o $(OUTPUT_DIR)/$@
+main: main.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(DEFINES) $< -o build/$@
+
+all : main
+clean :
+	rm -rf $(OUTPUT_DIR) 
+.PHONY : all clean main
