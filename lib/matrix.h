@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <iostream>
+#include <cstring>
 
 #ifndef __MATRIX_H__
 #define __MATRIX_H__
@@ -32,8 +33,18 @@ public:
         other._data = nullptr;      
     }
 
+    Matrix<T>&& copy() {
+        Matrix<T> result(_width, _height);
+        std::memcpy(result._data, _data, sizeof(T) * _width * _height);
+        return result;
+    }
+
     // Move assignment constructor
     Matrix<T>& operator=(Matrix&& other) {
+        if (_data != nullptr) {
+            delete[] _data;
+        }
+        
         _data = other._data;
         _width = other._width;
         _height = other._height;
@@ -69,7 +80,6 @@ public:
     uint32_t get_width() const {
         return _width;
     }
-
 };
 
 template<typename T>
