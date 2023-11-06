@@ -3,6 +3,7 @@
 #include <iostream>
 #include <random>
 
+
 using support::Matrix;
 
 void randomInitFloatMatrix(Matrix<float>& mat) {

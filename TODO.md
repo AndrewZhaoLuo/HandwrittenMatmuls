@@ -1,0 +1,11 @@
+### Infrastructure
+- [x] Basic matrix class 
+   - Prevents obvious dumb errors
+   - Provides fast accessors and readers of elements 
+   - Provides basic printing
+- [x] Naive matmul code
+   - Inner and outer product
+- [ ] Basic benchmarking code
+   - Wrapper to run given function and benchmark
+   - Given basic function
+   - Compare against a "golden" matrix 
