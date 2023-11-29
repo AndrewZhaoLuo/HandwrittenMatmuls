@@ -71,13 +71,6 @@ template <typename T, size_t tileN, size_t tileM, size_t tileK>
 void tiled_ijk_matmul_ijk(Matrix<T> &A, Matrix<T> &B, Matrix<T> &C) {
   uint32_t N, M, K;
   verifyMatmul(A, B, C, N, M, K);
-
-  for (uint32_t i = 0; i < N; i++) {
-    for (uint32_t j = 0; j < M; j++) {
-      C.a(i, j) = 0;
-    }
-  }
-
   T tile_buffer[tileN][tileM];
 
   // TODO: assertions on divisibility of tiling for now
@@ -122,13 +115,6 @@ template <typename T, size_t tileN, size_t tileM, size_t tileK>
 void tiled_ijk_matmul_kij(Matrix<T> &A, Matrix<T> &B, Matrix<T> &C) {
   uint32_t N, M, K;
   verifyMatmul(A, B, C, N, M, K);
-
-  for (uint32_t i = 0; i < N; i++) {
-    for (uint32_t j = 0; j < M; j++) {
-      C.a(i, j) = 0;
-    }
-  }
-
   T tile_buffer[tileN][tileM];
 
   // TODO: assertions on divisibility of tiling for now
