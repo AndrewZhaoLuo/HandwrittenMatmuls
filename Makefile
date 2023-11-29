@@ -16,10 +16,13 @@ $(OUTPUT_DIR):
 
 $(OBJECTS): | $(OUTPUT_DIR)
 $(OUTPUT_DIR)/%.o : lib/%.cpp $(OUTPUT_DIR)
-	$(CXX) $(CXXFLAGS) $(DEFINES) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(DEFINES) -c $< -o $@ 
 
 main: main.cpp $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(DEFINES) $< -o build/$@
+
+main.asm: main.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -g -S $(DEFINES) $< -o build/$@
 
 all : main
 clean :
